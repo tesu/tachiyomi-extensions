@@ -29,7 +29,7 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
     override val name = "Madokami"
     override val baseUrl = "https://manga.madokami.al"
     override val lang = "en"
-    override val supportsLatest = true
+    override val supportsLatest = false
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH)
 
@@ -63,13 +63,21 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
 
     override fun popularMangaRequest(page: Int): Request = latestUpdatesRequest(page)
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = authenticate(GET("$baseUrl/search?q=$query"))
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = authenticate(GET("$baseUrl/search?q=$query", headers))
 
     override fun searchMangaSelector() = "div.container table tbody tr td:nth-child(1) a:nth-child(1)"
 
     override fun searchMangaFromElement(element: Element): SManga = latestUpdatesFromElement(element)
 
     override fun searchMangaNextPageSelector(): String? = latestUpdatesNextPageSelector()
+
+    override fun mangaDetailsRequest(manga: SManga): Request {
+        val url = HttpUrl.parse(baseUrl + manga.url.trimEnd('/'))!!
+        if (url.pathSize() > 5) {
+            return authenticate(GET(url.newBuilder().removePathSegment(5).build().url().toExternalForm(), headers))
+        }
+        return authenticate(GET(url.url().toExternalForm(), headers))
+    }
 
     /**
      * Returns the details of the manga from the given [document].
