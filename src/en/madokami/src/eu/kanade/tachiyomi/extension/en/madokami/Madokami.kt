@@ -72,9 +72,12 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
     override fun searchMangaNextPageSelector(): String? = latestUpdatesNextPageSelector()
 
     override fun mangaDetailsRequest(manga: SManga): Request {
-        val url = HttpUrl.parse(baseUrl + manga.url.trimEnd('/'))!!
-        if (url.pathSize() > 5) {
+        val url = HttpUrl.parse(baseUrl + manga.url)!!
+        if (url.pathSize() > 5 && url.pathSegments()[0] == "Manga" && url.pathSegments()[1] != "Non-English") {
             return authenticate(GET(url.newBuilder().removePathSegment(5).build().url().toExternalForm(), headers))
+        }
+        if (url.pathSize() > 2 && url.pathSegments()[0] == "Raws") {
+            return authenticate(GET(url.newBuilder().removePathSegment(2).build().url().toExternalForm(), headers))
         }
         return authenticate(GET(url.url().toExternalForm(), headers))
     }
