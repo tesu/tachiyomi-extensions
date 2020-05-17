@@ -78,7 +78,6 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
      */
     override fun mangaDetailsParse(document: Document): SManga {
         val manga = SManga.create()
-//        manga.title = document.select("span.title").text()
         manga.author = document.select("a[itemprop=\"author\"]").joinToString(", ") { it.text() }
         manga.description = "Tags: " + document.select("div.genres[itemprop=\"keywords\"] a.tag.tag-category").joinToString(", ") { it.text() }
         manga.genre = document.select("div.genres a.tag[itemprop=\"genre\"]").joinToString(", ") { it.text() }
