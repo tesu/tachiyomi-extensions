@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 import kotlin.collections.ArrayList
 import okhttp3.Credentials
 import okhttp3.HttpUrl
@@ -29,47 +30,45 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
     override val lang = "en"
     override val supportsLatest = true
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm")
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH)
 
     private val preferences: SharedPreferences by lazy {
         Injekt.get<Application>().getSharedPreferences("source_$id", 0x0000)
     }
 
     private fun authenticate(request: Request): Request {
-        val credential = Credentials.basic(preferences.getString("username", ""), preferences.getString("password", ""))
+        val credential = Credentials.basic(preferences.getString("username", "")!!, preferences.getString("password", "")!!)
         return request.newBuilder().header("Authorization", credential).build()
     }
 
     override fun latestUpdatesSelector() = "table.mobile-files-table tbody tr td:nth-child(1) a:nth-child(1)"
 
     override fun latestUpdatesFromElement(element: Element): SManga {
-        var manga = SManga.create()
+        val manga = SManga.create()
         manga.setUrlWithoutDomain(element.attr("href"))
         manga.title = element.text().split("/").last()
         return manga
     }
 
-    override fun latestUpdatesNextPageSelector() = null
+    override fun latestUpdatesNextPageSelector(): String? = null
 
     override fun latestUpdatesRequest(page: Int) = authenticate(GET("$baseUrl/recent", headers))
 
-    override fun popularMangaSelector(): String { return latestUpdatesSelector() }
+    override fun popularMangaSelector(): String = latestUpdatesSelector()
 
-    override fun popularMangaFromElement(element: Element): SManga { return latestUpdatesFromElement(element) }
+    override fun popularMangaFromElement(element: Element): SManga = latestUpdatesFromElement(element)
 
-    override fun popularMangaNextPageSelector(): String? { return latestUpdatesNextPageSelector() }
+    override fun popularMangaNextPageSelector(): String? = latestUpdatesNextPageSelector()
 
-    override fun popularMangaRequest(page: Int): Request { return latestUpdatesRequest(page) }
+    override fun popularMangaRequest(page: Int): Request = latestUpdatesRequest(page)
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        return authenticate(GET("$baseUrl/search?q=$query"))
-    }
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = authenticate(GET("$baseUrl/search?q=$query"))
 
     override fun searchMangaSelector() = "div.container table tbody tr td:nth-child(1) a:nth-child(1)"
 
-    override fun searchMangaFromElement(element: Element): SManga { return latestUpdatesFromElement(element) }
+    override fun searchMangaFromElement(element: Element): SManga = latestUpdatesFromElement(element)
 
-    override fun searchMangaNextPageSelector(): String? { return latestUpdatesNextPageSelector() }
+    override fun searchMangaNextPageSelector(): String? = latestUpdatesNextPageSelector()
 
     /**
      * Returns the details of the manga from the given [document].
@@ -77,12 +76,10 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
      * @param document the parsed document.
      */
     override fun mangaDetailsParse(document: Document): SManga {
-        var manga = SManga.create()
-        manga.url = document.location()
-        manga.title = document.select("span.title").text()
-        manga.author = document.select("a[itemprop=\"author\"]").map { it.text() }.joinToString(", ")
-        manga.description = "Tags: " + document.select("div.genres[itemprop=\"keywords\"] a.tag.tag-category").map { it.text() }.joinToString(", ")
-        manga.genre = document.select("div.genres a.tag[itemprop=\"genre\"]").map { it.text() }.joinToString(", ")
+        val manga = SManga.create()
+        manga.author = document.select("a[itemprop=\"author\"]").joinToString(", ") { it.text() }
+        manga.description = "Tags: " + document.select("div.genres[itemprop=\"keywords\"] a.tag.tag-category").joinToString(", ") { it.text() }
+        manga.genre = document.select("div.genres a.tag[itemprop=\"genre\"]").joinToString(", ") { it.text() }
         manga.status = if (document.select("span.scanstatus").text() == "Yes") SManga.COMPLETED else SManga.UNKNOWN
         manga.thumbnail_url = document.select("div.manga-info img[itemprop=\"image\"]").attr("src")
         return manga
@@ -103,7 +100,7 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
     override fun chapterFromElement(element: Element): SChapter {
         val el = element.parent().parent()
         val chapter = SChapter.create()
-        chapter.url = "${el.select("td:nth-child(6) a").attr("href")}"
+        chapter.url = el.select("td:nth-child(6) a").attr("href")
         chapter.name = el.select("td:nth-child(1) a").text()
         val date = el.select("td:nth-child(3)").text()
         if (date.endsWith("ago")) {
@@ -140,10 +137,9 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
             val url = HttpUrl.Builder()
                 .scheme("https")
                 .host("manga.madokami.al")
-                .addPathSegments("reader")
-                .addPathSegment("image")
+                .addPathSegments("reader/image")
                 .addEncodedQueryParameter("path", URLEncoder.encode(path, "UTF-8"))
-                .addEncodedQueryParameter("file", URLEncoder.encode(filename.trim('"').replace("&quot;", "").replace("\\/", "/"), "UTF-8"))
+                .addEncodedQueryParameter("file", URLEncoder.encode(filename.trim('"').replace("\\/", "/"), "UTF-8"))
                 .build().url()
             pages.add(Page(index, url.toExternalForm(), url.toExternalForm()))
         }
