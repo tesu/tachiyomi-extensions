@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -46,7 +47,7 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
     override fun latestUpdatesFromElement(element: Element): SManga {
         val manga = SManga.create()
         manga.setUrlWithoutDomain(element.attr("href"))
-        manga.title = element.text().split("/").last()
+        manga.title = URLDecoder.decode(element.attr("href").split("/").last(), "UTF-8").trimStart('!')
         return manga
     }
 
@@ -77,6 +78,7 @@ class Madokami : ConfigurableSource, ParsedHttpSource() {
      */
     override fun mangaDetailsParse(document: Document): SManga {
         val manga = SManga.create()
+//        manga.title = document.select("span.title").text()
         manga.author = document.select("a[itemprop=\"author\"]").joinToString(", ") { it.text() }
         manga.description = "Tags: " + document.select("div.genres[itemprop=\"keywords\"] a.tag.tag-category").joinToString(", ") { it.text() }
         manga.genre = document.select("div.genres a.tag[itemprop=\"genre\"]").joinToString(", ") { it.text() }
