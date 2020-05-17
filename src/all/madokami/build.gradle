@@ -3,7 +3,7 @@ apply plugin: 'kotlin-android'
 
 ext {
     appName = 'Tachiyomi: Madokami'
-    pkgNameSuffix = 'en.madokami'
+    pkgNameSuffix = 'all.madokami'
     extClass = '.Madokami'
     extVersionCode = 1
     libVersion = '1.2'

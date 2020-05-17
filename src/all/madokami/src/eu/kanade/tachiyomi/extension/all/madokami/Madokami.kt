@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.extension.en.madokami
+package eu.kanade.tachiyomi.extension.all.madokami
 
 import android.app.Application
 import android.content.SharedPreferences
