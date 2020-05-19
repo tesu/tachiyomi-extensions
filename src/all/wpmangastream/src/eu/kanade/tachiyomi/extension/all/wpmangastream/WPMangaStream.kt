@@ -103,8 +103,7 @@ abstract class WPMangaStream(
     }
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        val builtUrl = if (page == 1) "$baseUrl/manga/" else "$baseUrl/manga/page/$page/"
-        val url = HttpUrl.parse(builtUrl)!!.newBuilder()
+        val url = HttpUrl.parse("$baseUrl/manga/")!!.newBuilder()
         url.addQueryParameter("title", query)
         url.addQueryParameter("page", page.toString())
         filters.forEach { filter ->
@@ -168,7 +167,7 @@ abstract class WPMangaStream(
                 author = infoElement.select("span:contains(Author:)").firstOrNull()?.ownText()
                 artist = author
                 description = infoElement.select("div.desc p").joinToString("\n") { it.text() }
-                thumbnail_url = infoElement.select("img").imgAttr()
+                thumbnail_url = infoElement.select("div.thumb img").imgAttr()
             }
         }
     }
