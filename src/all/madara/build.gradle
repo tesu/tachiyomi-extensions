@@ -2,11 +2,12 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 ext {
-    appName = 'Tachiyomi: Madara (multiple sources)'
+    extName = 'Madara (multiple sources)'
     pkgNameSuffix = "all.madara"
     extClass = '.MadaraFactory'
-    extVersionCode = 95
+    extVersionCode = 158
     libVersion = '1.2'
+    containsNsfw = true
 }
 
 apply from: "$rootDir/common.gradle"

@@ -2,11 +2,12 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 ext {
-    appName = 'Tachiyomi: FMReader (multiple aggregators)'
+    extName = 'FMReader (multiple aggregators)'
     pkgNameSuffix = 'all.fmreader'
     extClass = '.FMReaderFactory'
-    extVersionCode = 13
+    extVersionCode = 22
     libVersion = '1.2'
+    containsNsfw = true
 }
 
 apply from: "$rootDir/common.gradle"

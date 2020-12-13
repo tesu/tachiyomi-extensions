@@ -7,12 +7,12 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
-import java.text.SimpleDateFormat
-import java.util.Locale
 import okhttp3.Request
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import rx.Observable
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class Xkcd : ParsedHttpSource() {
 
@@ -37,9 +37,10 @@ class Xkcd : ParsedHttpSource() {
         return Observable.just(MangasPage(arrayListOf(manga), false))
     }
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> = Observable.empty()
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> = Observable.just(MangasPage(emptyList(), false))
 
-    override fun fetchMangaDetails(manga: SManga): Observable<SManga> = Observable.just(manga)
+    override fun fetchMangaDetails(manga: SManga): Observable<SManga> = fetchPopularManga(1)
+        .map { it.mangas.first().apply { initialized = true } }
 
     override fun chapterListSelector() = "div#middleContainer.box a"
 
@@ -50,7 +51,7 @@ class Xkcd : ParsedHttpSource() {
         chapter.chapter_number = number.toFloat()
         chapter.name = number + " - " + element.text()
         chapter.date_upload = element.attr("title").let {
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(it).time
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(it)?.time ?: 0L
         }
         return chapter
     }
@@ -63,7 +64,7 @@ class Xkcd : ParsedHttpSource() {
         // if an HD image is available it'll be the srcset attribute
         val image = document.select("div#comic img").let {
             if (it.hasAttr("srcset")) it.attr("abs:srcset").substringBefore(" ")
-                else it.attr("abs:src")
+            else it.attr("abs:src")
         }
 
         // create a text image for the alt text

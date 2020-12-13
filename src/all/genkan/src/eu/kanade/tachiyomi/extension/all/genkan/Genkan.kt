@@ -8,15 +8,15 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import eu.kanade.tachiyomi.util.asJsoup
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 abstract class Genkan(
     override val name: String,
@@ -133,7 +133,7 @@ abstract class Genkan(
         return if ("ago" in string) {
             parseRelativeDate(string) ?: 0
         } else {
-            dateFormat.parse(string).time
+            dateFormat.parse(string)?.time ?: 0
         }
     }
 
@@ -203,7 +203,7 @@ abstract class GenkanOriginal(
 
         /* call another function if there's more pages to search
            not doing it this way can lead to a false "no results found"
-           if no matches are found on the first page but there are matcheszz
+           if no matches are found on the first page but there are matches
            on subsequent pages */
         nextPageSelectorElement = document.select(searchMangaNextPageSelector())
         while (nextPageSelectorElement.hasText()) {

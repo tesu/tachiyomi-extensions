@@ -8,12 +8,12 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import eu.kanade.tachiyomi.util.asJsoup
-import java.text.SimpleDateFormat
-import java.util.Locale
 import okhttp3.Response
 import org.json.JSONObject
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MangaDenizi : ParsedHttpSource() {
     override val name = "MangaDenizi"
@@ -109,7 +109,11 @@ class MangaDenizi : ParsedHttpSource() {
     override fun chapterFromElement(element: Element) = SChapter.create().apply {
         setUrlWithoutDomain(element.select("a").attr("href"))
         name = "${element.select("a").text()}: ${element.select("em").text()}"
-        date_upload = dateFormat.parse(element.select("div.date-chapter-title-rtl").text().trim()).time ?: 0
+        date_upload = try {
+            dateFormat.parse(element.select("div.date-chapter-title-rtl").text().trim())?.time ?: 0
+        } catch (_: Exception) {
+            0
+        }
     }
 
     companion object {

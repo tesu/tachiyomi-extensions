@@ -2,10 +2,10 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 ext {
-    appName = 'Tachiyomi: Tsuki Mangás'
+    extName = 'Tsuki Mangás'
     pkgNameSuffix = 'pt.tsukimangas'
     extClass = '.TsukiMangas'
-    extVersionCode = 1
+    extVersionCode = 7
     libVersion = '1.2'
 }
 
@@ -14,3 +14,4 @@ dependencies {
 }
 
 apply from: "$rootDir/common.gradle"
+

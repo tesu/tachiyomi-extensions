@@ -9,15 +9,15 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import eu.kanade.tachiyomi.util.asJsoup
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import rx.Observable
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class Scantrad : ParsedHttpSource() {
 
@@ -125,7 +125,8 @@ class Scantrad : ParsedHttpSource() {
 
     // Chapters
 
-    override fun chapterListSelector() = "div.chapitre"
+    // ignore links from Amazon that get mixed in
+    override fun chapterListSelector() = "div.chapitre:has(span:contains(lire))"
 
     override fun chapterFromElement(element: Element): SChapter {
         val chapter = SChapter.create()
@@ -178,7 +179,7 @@ class Scantrad : ParsedHttpSource() {
             }
         } else {
             try {
-                SimpleDateFormat("dd MMM yyyy", Locale.FRENCH).parse(date.substringAfter("le ")).time
+                SimpleDateFormat("dd MMM yyyy", Locale.FRENCH).parse(date.substringAfter("le "))?.time ?: 0
             } catch (_: Exception) {
                 0L
             }

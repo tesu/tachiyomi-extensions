@@ -21,6 +21,7 @@ import eu.kanade.tachiyomi.util.asJsoup
 import okhttp3.FormBody
 import okhttp3.Headers
 import okhttp3.HttpUrl
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
@@ -39,10 +40,14 @@ abstract class SuperMangasGeneric(
 
     override val supportsLatest = true
 
+    override val client: OkHttpClient = network.cloudflareClient
+
     override fun headersBuilder(): Headers.Builder = Headers.Builder()
         .add("User-Agent", USER_AGENT)
         .add("Origin", baseUrl)
         .add("Referer", baseUrl)
+        .add("Accept", ACCEPT_COMMON)
+        .add("Accept-Language", ACCEPT_LANGUAGE)
 
     protected open val defaultFilter = mutableMapOf(
         "filter_display_view" to "lista",
@@ -62,6 +67,8 @@ abstract class SuperMangasGeneric(
     )
 
     protected open val contentList: List<Content> = listOf()
+
+    protected open val chapterListOrder: String = "desc"
 
     private fun genericPaginatedRequest(
         typeUrl: String,
@@ -217,30 +224,36 @@ abstract class SuperMangasGeneric(
 
     override fun mangaDetailsParse(document: Document): SManga = SManga.create().apply {
         val infoElement = document.select("div.boxAnime").first()!!
+        val infoElementAbout = infoElement.select("ul.boxAnimeSobre")
 
         title = document.select("div.boxBarraInfo h1").first()!!.text()
-        author = infoElement.select("ul.boxAnimeSobre li:contains(Autor) span").first()!!.text()
-        artist = infoElement.select("ul.boxAnimeSobre li:contains(Art) span").first()!!.text()
-        genre = infoElement.select("ul.boxAnimeSobre li.sizeFull span a").joinToString { it.text() }
+        author = infoElementAbout.select("li:contains(Autor) span").first()!!.text()
+        artist = infoElementAbout.select("li:contains(Art:) span").first()!!.text()
+        genre = infoElementAbout.select("li.sizeFull span a").joinToString { it.text() }
+        status = infoElementAbout.select("li:contains(Conteúdo)").first()!!.text().toStatus()
         description = document.select("p#sinopse").first()!!.text()
         thumbnail_url = infoElement.select("span.boxAnimeImg img").first()!!.attr("src")
     }
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val document = response.asJsoup()
-        val totalPage = document.select("select.pageSelect option").last()!!.attr("value").toInt()
-        val idCategory = document.select("div#listaDeConteudo").first()!!.attr("data-id-cat").toInt()
+        val lastPage = document.select("select.pageSelect option").last()!!
+            .attr("value").toInt()
+        val idCategory = document.select("div#listaDeConteudo").first()!!
+            .attr("data-id-cat").toInt()
         val mangaUrl = response.request().url().toString()
 
         val chapters = mutableListOf<SChapter>()
 
-        for (page in 1..totalPage) {
-            val result = client.newCall(chapterListPaginatedRequest(idCategory, page, totalPage, mangaUrl)).execute()
+        for (page in 1..lastPage) {
+            val chapterListRequest = chapterListPaginatedRequest(idCategory, page, lastPage, mangaUrl)
+            val result = client.newCall(chapterListRequest).execute()
             val apiResponse = result.asJsonObject()
 
             if (apiResponse["codigo"].int == 0) break
 
-            chapters += Jsoup.parse(apiResponse["body"].asJsonArray.joinToString("") { it.string })
+            val htmlBody = apiResponse["body"].array.joinToString("") { it.string }
+            chapters += Jsoup.parse(htmlBody)
                 .select(chapterListSelector())
                 .map { chapterFromElement(it) }
         }
@@ -254,10 +267,11 @@ abstract class SuperMangasGeneric(
             .add("page", page.toString())
             .add("limit", "50")
             .add("total_page", totalPage.toString())
-            .add("order_video", "desc")
+            .add("order_video", chapterListOrder)
+            .add("type", "book")
     }
 
-    private fun chapterListPaginatedRequest(idCategory: Int, page: Int, totalPage: Int, mangaUrl: String): Request {
+    protected fun chapterListPaginatedRequest(idCategory: Int, page: Int, totalPage: Int, mangaUrl: String): Request {
         val form = chapterListPaginatedBody(idCategory, page, totalPage).build()
 
         val newHeaders = headersBuilder()
@@ -266,6 +280,7 @@ abstract class SuperMangasGeneric(
             .add("Content-Length", form.contentLength().toString())
             .add("Host", "www." + baseUrl.substringAfter("//"))
             .set("Referer", mangaUrl)
+            .set("Accept", ACCEPT_JSON)
             .build()
 
         return POST("$baseUrl/inc/paginatorVideo.inc.php", newHeaders, form)
@@ -275,7 +290,7 @@ abstract class SuperMangasGeneric(
 
     override fun chapterFromElement(element: Element): SChapter = SChapter.create().apply {
         name = element.select("a").first()!!.text()
-        chapter_number = element.select("span[style]").first()!!.text().toFloatOrNull() ?: 0f
+        chapter_number = element.select("span[style]").first()!!.text().toFloatOrNull() ?: -1f
         setUrlWithoutDomain(element.select("a").first()!!.attr("href"))
     }
 
@@ -300,18 +315,26 @@ abstract class SuperMangasGeneric(
 
     protected class ContentFilter(contents: List<Content>) : Filter.Select<String>(
         "Tipo de Conteúdo",
-        contents.map { it.third }.toTypedArray())
+        contents.map { it.third }.toTypedArray()
+    )
 
     protected class LetterFilter : Filter.Select<String>("Letra inicial", LETTER_LIST)
 
-    protected class StatusFilter : Filter.Select<String>("Status",
-        STATUS_LIST.map { it.second }.toTypedArray())
+    protected class StatusFilter : Filter.Select<String>(
+        "Status",
+        STATUS_LIST.map { it.second }.toTypedArray()
+    )
 
-    protected class CensureFilter : Filter.Select<String>("Censura",
-        CENSURE_LIST.map { it.second }.toTypedArray())
+    protected class CensureFilter : Filter.Select<String>(
+        "Censura",
+        CENSURE_LIST.map { it.second }.toTypedArray()
+    )
 
-    protected class SortFilter : Filter.Sort("Ordem",
-        SORT_LIST.map { it.third }.toTypedArray(), Selection(2, false))
+    protected class SortFilter : Filter.Sort(
+        "Ordem",
+        SORT_LIST.map { it.third }.toTypedArray(),
+        Selection(2, false)
+    )
 
     protected class GenreFilter(genres: List<Tag>) : Filter.Group<Tag>("Gêneros", genres)
     protected class ExclusiveModeFilter : Filter.CheckBox("Modo Exclusivo", true)
@@ -322,7 +345,15 @@ abstract class SuperMangasGeneric(
 
     private fun String.changeSize(): String = substringBefore("&w=280") + "&w512"
 
-    private fun Response.asJsonObject(): JsonObject = JSON_PARSER.parse(body()!!.string()).obj
+    private fun String.toStatus() = when {
+        contains("Em lançamento") -> SManga.ONGOING
+        contains("Sendo upado") -> SManga.ONGOING
+        contains("Completo") -> SManga.COMPLETED
+        else -> SManga.UNKNOWN
+    }
+
+    protected fun Response.asJsonObject(): JsonObject =
+        JSON_PARSER.parse(body()!!.string().substringAfter("</b>")).obj
 
     private fun Map<String, String>.toUrlQueryParams(): String =
         map { (k, v) -> "$k=$v" }.joinToString("&")
@@ -334,7 +365,13 @@ abstract class SuperMangasGeneric(
     }
 
     companion object {
-        private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 Safari/537.36"
+        private const val ACCEPT_COMMON = "text/html,application/xhtml+xml,application/xml;q=0.9," +
+            "image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+        private const val ACCEPT_JSON = "application/json, text/javascript, */*; q=0.01"
+        private const val ACCEPT_LANGUAGE = "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7,es;q=0.6,gl;q=0.5"
+        private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.66 Safari/537.36"
+
         private val JSON_PARSER by lazy { JsonParser() }
 
         private val LETTER_LIST = listOf("Todas", "Caracteres Especiais")
